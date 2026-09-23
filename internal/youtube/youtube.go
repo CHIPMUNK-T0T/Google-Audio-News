@@ -16,9 +16,11 @@ import (
 	yt "google.golang.org/api/youtube/v3"
 )
 
-// YouTube metadata limits. Neither field may contain '<' or '>'.
+// Title and description limits. YouTube allows 100-character titles, but
+// titles are kept within 40 characters by choice. Neither field may contain
+// '<' or '>'.
 const (
-	maxTitleRunes       = 100
+	maxTitleRunes       = 40
 	maxDescriptionBytes = 5000
 )
 
@@ -110,7 +112,7 @@ func ParseSources(sourcesJSON string) ([]Source, error) {
 	return wrapped.Sources, nil
 }
 
-// Title returns a title that satisfies YouTube's limits.
+// Title returns a title of at most 40 characters without '<' or '>'.
 func Title(title, fallback string) string {
 	t := sanitize(strings.TrimSpace(title))
 	if t == "" {
