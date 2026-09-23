@@ -21,7 +21,7 @@ cd Google-Audio-News
 変数を設定する。PowerShell を開き直したら、もう一度実行する。
 
 ```powershell
-$PROJECT_ID = "your-project-id"
+$PROJECT_ID = "your-project-id"  # これから作るプロジェクトの ID。世界で一意、小文字・数字・ハイフンで6〜30文字、先頭は英字
 $REGION = "asia-northeast1"
 $REPO = "news"
 $JOB = "news-uploader"
@@ -32,16 +32,32 @@ $SPREADSHEET_ID = "1HVK6VuGrOdCBqnh4L8oD16sda53OQLvTxhKICVQ7Um4"
 
 ## 1. プロジェクトと課金
 
-1. プロジェクトを作成し、請求先アカウントを紐付ける。Cloud Text-to-Speech と Cloud Run は、課金を有効にしないと使えない。
-2. 予算アラートを設定する（例: $1）。アラートは通知だけで、課金は止まらない。
-3. 任意: [Google Developer Program](https://developers.google.com/program) で AI Pro 特典の Google Cloud クレジット（月 $10）を紐付けておくと、無料枠を超えたときの保険になる。
+このジョブ専用のプロジェクトを新しく作る。`gen-lang-client-` で始まるプロジェクトは Google AI Studio が自動で作ったもので、使わない。Gemini API の無料枠は、請求先アカウントを紐付けていないプロジェクトにしか適用されないため、紐付けるとそのプロジェクトの Gemini API キーの利用が有料になる。
+
+Cloud Run、Secret Manager、Artifact Registry などは、請求先アカウントを紐付けないと有効にできない。
+
+最初に、gcloud を個人の Google アカウント（AI Pro を契約しているアカウント）でログインさせる。`gcloud auth list` で、`*` が付いているアカウントが今使われているもの。
+
+```powershell
+gcloud auth login
+gcloud auth list
+gcloud projects create $PROJECT_ID "--name=Google Audio News"
+gcloud billing accounts list
+gcloud billing projects link $PROJECT_ID --billing-account=請求先アカウントID
+gcloud billing projects describe $PROJECT_ID
+```
+
+`gcloud billing accounts list` の `ACCOUNT_ID`（`XXXXXX-XXXXXX-XXXXXX` の形）を `--billing-account` に指定する。最後のコマンドで `billingEnabled: true` と表示されればよい。
+
+- 予算アラートを設定する（例: $1）。アラートは通知だけで、課金は止まらない。
+- 任意: [Google Developer Program](https://developers.google.com/program) で AI Pro 特典の Google Cloud クレジット（月 $10）を紐付けておくと、無料枠を超えたときの保険になる。
 
 ```powershell
 gcloud config set project $PROJECT_ID
 gcloud services enable run.googleapis.com cloudscheduler.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com sheets.googleapis.com youtube.googleapis.com texttospeech.googleapis.com
 ```
 
-`texttospeech` は `TTS_PROVIDER=google` に切り替えるときのためのもの。有効にするだけなら料金はかからない。
+`texttospeech` は `TTS_PROVIDER=google` に切り替えるときのためのもの。有効にするだけなら料金はかからない。`gcloud services list --enabled` で、8つとも有効になったか確認できる。
 
 ## 2. サービスアカウントとスプレッドシート
 
