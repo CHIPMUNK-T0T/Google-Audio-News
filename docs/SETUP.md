@@ -130,6 +130,16 @@ Remove-Item Env:FISH_API_KEY, Env:DRY_RUN
 
 ## 6. イメージのビルド
 
+2024年6月以降に作ったプロジェクトでは、Cloud Build は Compute Engine の既定のサービスアカウント（`プロジェクト番号-compute@developer.gserviceaccount.com`）でビルドする。このアカウントは Compute Engine API を有効にしたときに作られるので、先に有効にする（VM を作らなければ料金はかからない）。また、このアカウントには Cloud Build 用のロールが付いていないので、`roles/cloudbuild.builds.builder` を付与する。
+
+```powershell
+gcloud services enable compute.googleapis.com
+$PROJECT_NUMBER = gcloud projects describe $PROJECT_ID "--format=value(projectNumber)"
+gcloud projects add-iam-policy-binding $PROJECT_ID "--member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" --role=roles/cloudbuild.builds.builder
+```
+
+付与で「サービスアカウントが存在しない」というエラーが出たら、1〜2分待ってからもう一度実行する。
+
 ```powershell
 gcloud artifacts repositories create $REPO --repository-format=docker "--location=$REGION"
 gcloud artifacts repositories set-cleanup-policies $REPO "--location=$REGION" --policy=deploy/ar-cleanup-policy.json --no-dry-run
