@@ -1,17 +1,33 @@
 # セットアップ手順
 
-GCP へのデプロイは、ローカルの gcloud CLI で行う。コマンドはすべて一度だけ実行すればよい。
+GCP へのデプロイは、Windows の PowerShell と gcloud CLI で行う。コマンドはすべて一度だけ実行すればよい。
 
-## 0. 変数
+PowerShell で書くときの注意:
 
-```bash
-PROJECT_ID=your-project-id
-REGION=asia-northeast1
-REPO=news
-JOB=news-uploader
-SA=news-uploader@${PROJECT_ID}.iam.gserviceaccount.com
-IMAGE=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/uploader:latest
-SPREADSHEET_ID=1HVK6VuGrOdCBqnh4L8oD16sda53OQLvTxhKICVQ7Um4
+- `$変数` やカンマを含む引数は、全体を `"..."` で囲む。囲まないと、カンマを含む引数の中では変数が展開されない。
+- 秘密の値を `|` でパイプして渡さない。PowerShell は末尾に改行を足すので、値に改行が付いたまま登録される。改行なしのファイルに書いてから `--data-file` で渡す。
+
+## 0. 準備
+
+必要なもの: [gcloud CLI](https://cloud.google.com/sdk/docs/install)、Git、Go（1.21 以上なら、必要な 1.26 が自動で取得される）。
+
+リポジトリを取得し、以降のコマンドはすべてこのフォルダで実行する。
+
+```powershell
+git clone -b claude/keen-hamilton-sj9gvx https://github.com/CHIPMUNK-T0T/Google-Audio-News.git
+cd Google-Audio-News
+```
+
+変数を設定する。PowerShell を開き直したら、もう一度実行する。
+
+```powershell
+$PROJECT_ID = "your-project-id"
+$REGION = "asia-northeast1"
+$REPO = "news"
+$JOB = "news-uploader"
+$SA = "news-uploader@${PROJECT_ID}.iam.gserviceaccount.com"
+$IMAGE = "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/uploader:latest"
+$SPREADSHEET_ID = "1HVK6VuGrOdCBqnh4L8oD16sda53OQLvTxhKICVQ7Um4"
 ```
 
 ## 1. プロジェクトと課金
@@ -20,30 +36,30 @@ SPREADSHEET_ID=1HVK6VuGrOdCBqnh4L8oD16sda53OQLvTxhKICVQ7Um4
 2. 予算アラートを設定する（例: $1）。アラートは通知だけで、課金は止まらない。
 3. 任意: [Google Developer Program](https://developers.google.com/program) で AI Pro 特典の Google Cloud クレジット（月 $10）を紐付けておくと、無料枠を超えたときの保険になる。
 
-```bash
+```powershell
 gcloud config set project $PROJECT_ID
-gcloud services enable run.googleapis.com cloudscheduler.googleapis.com \
-  secretmanager.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com \
-  sheets.googleapis.com youtube.googleapis.com texttospeech.googleapis.com
+gcloud services enable run.googleapis.com cloudscheduler.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com sheets.googleapis.com youtube.googleapis.com texttospeech.googleapis.com
 ```
 
 `texttospeech` は `TTS_PROVIDER=google` に切り替えるときのためのもの。有効にするだけなら料金はかからない。
 
 ## 2. サービスアカウントとスプレッドシート
 
-```bash
-gcloud iam service-accounts create news-uploader --display-name="News uploader"
+```powershell
+gcloud iam service-accounts create news-uploader "--display-name=News uploader"
 echo $SA
 ```
 
-スプレッドシート `daily_news_queue` を開き、「共有」で上の `$SA` を **編集者** として追加する。
+スプレッドシート `daily_news_queue` を開き、「共有」で上に表示されたアドレスを **編集者** として追加する。
 
 ## 3. Fish Audio の API キー
 
 [Fish Audio](https://fish.audio/) で API キーを発行し、Secret Manager に登録する。
 
-```bash
-printf '%s' 'FISHのAPIキー' | gcloud secrets create fish-api-key --data-file=-
+```powershell
+Set-Content -Path secret.txt -Value 'FishのAPIキー' -NoNewline -Encoding ascii
+gcloud secrets create fish-api-key --data-file=secret.txt
+Remove-Item secret.txt
 ```
 
 特定の声を使う場合は、その声のモデル ID を控えておく（手順 7 で `FISH_REFERENCE_ID` に設定する）。
@@ -54,51 +70,53 @@ printf '%s' 'FISHのAPIキー' | gcloud secrets create fish-api-key --data-file=
    - 対象: **外部**
    - OAuth クライアントを作成する。種類は **デスクトップ アプリ**。
    - 公開ステータスを **本番環境** にする。**テストのままだと、リフレッシュトークンが7日で失効する。**
-2. 自分のパソコンでリフレッシュトークンを取得する。YouTube チャンネルを持っているアカウントで承認する。承認時に「確認されていないアプリ」の警告が出るので、「詳細」から先に進む。
+2. リフレッシュトークンを取得する。表示された URL を、YouTube チャンネルを持っているアカウントでログインしたブラウザで開いて承認する。「確認されていないアプリ」の警告が出るので、「詳細」から先に進む。
 
-   ```bash
-   YOUTUBE_CLIENT_ID=xxx.apps.googleusercontent.com \
-   YOUTUBE_CLIENT_SECRET=yyy \
+   ```powershell
+   $env:YOUTUBE_CLIENT_ID = "xxx.apps.googleusercontent.com"
+   $env:YOUTUBE_CLIENT_SECRET = "yyy"
    go run ./cmd/youtube-auth
    ```
 
 3. 取得した値を Secret Manager に登録する。
 
-   ```bash
-   printf '%s' 'クライアントシークレット' | gcloud secrets create youtube-client-secret --data-file=-
-   printf '%s' 'リフレッシュトークン' | gcloud secrets create youtube-refresh-token --data-file=-
+   ```powershell
+   Set-Content -Path secret.txt -Value 'クライアントシークレット' -NoNewline -Encoding ascii
+   gcloud secrets create youtube-client-secret --data-file=secret.txt
+   Set-Content -Path secret.txt -Value 'リフレッシュトークン' -NoNewline -Encoding ascii
+   gcloud secrets create youtube-refresh-token --data-file=secret.txt
+   Remove-Item secret.txt
    ```
 
-Secret Manager の無料枠は、有効なバージョン6個まで。値を更新したら、古いバージョンは破棄（destroy）する。
+Secret Manager の無料枠は、有効なバージョン6個まで。値を更新するときは `gcloud secrets versions add 名前 --data-file=secret.txt` を使い、古いバージョンは破棄（destroy）する。
 
-```bash
-for s in fish-api-key youtube-client-secret youtube-refresh-token; do
-  gcloud secrets add-iam-policy-binding $s \
-    --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor
-done
+```powershell
+foreach ($s in "fish-api-key", "youtube-client-secret", "youtube-refresh-token") {
+  gcloud secrets add-iam-policy-binding $s "--member=serviceAccount:$SA" --role=roles/secretmanager.secretAccessor
+}
 ```
 
 ## 5. ローカルで試す（任意）
 
-シートの読み取りと音声・動画の生成だけを行う。YouTube へのアップロードとシートの更新はしない。
+シートの読み取りと音声・動画の生成だけを行う。YouTube へのアップロードとシートの更新はしない。ffmpeg をインストールし、PATH に通しておく必要がある。
 
-```bash
-gcloud auth application-default login \
-  --scopes=https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/cloud-platform
+```powershell
+gcloud auth application-default login "--scopes=https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/cloud-platform"
 gcloud auth application-default set-quota-project $PROJECT_ID
 
-SPREADSHEET_ID=$SPREADSHEET_ID FISH_API_KEY=xxx DRY_RUN=true go run ./cmd/uploader
+$env:SPREADSHEET_ID = $SPREADSHEET_ID
+$env:FISH_API_KEY = "FishのAPIキー"
+$env:DRY_RUN = "true"
+go run ./cmd/uploader
 # 生成物のパスはログに表示される
+Remove-Item Env:FISH_API_KEY, Env:DRY_RUN
 ```
-
-ffmpeg がローカルに入っている必要がある。
 
 ## 6. イメージのビルド
 
-```bash
-gcloud artifacts repositories create $REPO --repository-format=docker --location=$REGION
-gcloud artifacts repositories set-cleanup-policies $REPO --location=$REGION \
-  --policy=deploy/ar-cleanup-policy.json --no-dry-run
+```powershell
+gcloud artifacts repositories create $REPO --repository-format=docker "--location=$REGION"
+gcloud artifacts repositories set-cleanup-policies $REPO "--location=$REGION" --policy=deploy/ar-cleanup-policy.json --no-dry-run
 gcloud builds submit --tag $IMAGE
 ```
 
@@ -106,33 +124,25 @@ gcloud builds submit --tag $IMAGE
 
 ## 7. Cloud Run Job
 
-```bash
-gcloud run jobs deploy $JOB \
-  --image=$IMAGE --region=$REGION --service-account=$SA \
-  --cpu=1 --memory=1Gi --task-timeout=20m --max-retries=0 \
-  --set-env-vars=SPREADSHEET_ID=$SPREADSHEET_ID,TTS_PROVIDER=fish,YOUTUBE_CLIENT_ID=xxx.apps.googleusercontent.com \
-  --set-secrets=FISH_API_KEY=fish-api-key:latest,YOUTUBE_CLIENT_SECRET=youtube-client-secret:latest,YOUTUBE_REFRESH_TOKEN=youtube-refresh-token:latest
+`xxx.apps.googleusercontent.com` は、手順 4 の OAuth クライアント ID に置き換える。
+
+```powershell
+gcloud run jobs deploy $JOB "--image=$IMAGE" "--region=$REGION" "--service-account=$SA" --cpu=1 --memory=1Gi --task-timeout=20m --max-retries=0 "--set-env-vars=SPREADSHEET_ID=$SPREADSHEET_ID,TTS_PROVIDER=fish,YOUTUBE_CLIENT_ID=xxx.apps.googleusercontent.com" "--set-secrets=FISH_API_KEY=fish-api-key:latest,YOUTUBE_CLIENT_SECRET=youtube-client-secret:latest,YOUTUBE_REFRESH_TOKEN=youtube-refresh-token:latest"
 
 # READY の行がある状態で1回動かしてみる
-gcloud run jobs execute $JOB --region=$REGION --wait
+gcloud run jobs execute $JOB "--region=$REGION" --wait
 ```
 
-声を指定する場合は、`--set-env-vars` に `FISH_REFERENCE_ID=...` を追加する。Cloud Run の `/tmp` はメモリ上にあるので、メモリは 1Gi にしておく（約20分の音声と動画で約40MB。15,000字の原稿でも100MB程度の見込み）。
+声を指定する場合は、`--set-env-vars` の値に `,FISH_REFERENCE_ID=...` を追加する。Cloud Run の `/tmp` はメモリ上にあるので、メモリは 1Gi にしておく（約20分の音声と動画で約40MB。15,000字の原稿でも100MB程度の見込み）。
 
 15,000字近い原稿で20分のタスクタイムアウトを超えた場合は、`--task-timeout` を延ばす。そのときは `STALE_AFTER_MINUTES` もタイムアウトより長くする（短いままだと、処理中の行が別の実行によって ERROR にされる）。
 
 ## 8. Cloud Scheduler
 
-```bash
-gcloud run jobs add-iam-policy-binding $JOB --region=$REGION \
-  --member=serviceAccount:$SA --role=roles/run.invoker
+```powershell
+gcloud run jobs add-iam-policy-binding $JOB "--region=$REGION" "--member=serviceAccount:$SA" --role=roles/run.invoker
 
-gcloud scheduler jobs create http ${JOB}-trigger \
-  --location=$REGION \
-  --schedule="*/10 6-8 * * *" --time-zone="Asia/Tokyo" \
-  --uri="https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB}:run" \
-  --http-method=POST \
-  --oauth-service-account-email=$SA
+gcloud scheduler jobs create http "${JOB}-trigger" "--location=$REGION" "--schedule=*/10 6-8 * * *" --time-zone=Asia/Tokyo "--uri=https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB}:run" --http-method=POST "--oauth-service-account-email=$SA"
 ```
 
 6:00〜8:50 のあいだ、10分ごとに起動する。READY の行がなければ、ジョブは数秒で終わる。
@@ -141,9 +151,8 @@ gcloud scheduler jobs create http ${JOB}-trigger \
 
 Fish Audio の無料提供が終わったとき（現在の期限は 2026-11-30）や障害時は、次のコマンドで切り替える。
 
-```bash
-gcloud run jobs update $JOB --region=$REGION \
-  --update-env-vars=TTS_PROVIDER=google,GOOGLE_TTS_VOICE=ja-JP-Chirp3-HD-Aoede
+```powershell
+gcloud run jobs update $JOB "--region=$REGION" "--update-env-vars=TTS_PROVIDER=google,GOOGLE_TTS_VOICE=ja-JP-Chirp3-HD-Aoede"
 ```
 
 Chirp 3: HD は月100万字まで無料。声の一覧は Cloud Text-to-Speech のドキュメントを参照する。権限エラーが出た場合は、サービスアカウントに `roles/serviceusage.serviceUsageConsumer` を付与する。
