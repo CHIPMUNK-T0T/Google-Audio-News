@@ -1,0 +1,5 @@
+/uploader
+/youtube-auth
+*.mp3
+*.mp4
+.env
