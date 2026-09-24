@@ -154,6 +154,8 @@ gcloud builds submit --tag $IMAGE
 
 削除ポリシーで最新2個だけを残すので、Artifact Registry の無料枠（0.5 GiB）に収まる。
 
+コードを更新したときは、`git pull` のあとに `gcloud builds submit --tag $IMAGE` だけを実行すればよい。ジョブはイメージをタグ（`latest`）で指定しているので、次の実行から新しいイメージが使われる。
+
 ## 7. Cloud Run Job
 
 `xxx.apps.googleusercontent.com` は、手順 4 の OAuth クライアント ID に置き換える。
@@ -206,7 +208,7 @@ Chirp 3: HD は月100万字まで無料。声の一覧は Cloud Text-to-Speech �
 | `YOUTUBE_REFRESH_TOKEN` | （必須） | リフレッシュトークン（Secret） |
 | `YOUTUBE_PRIVACY` | `private` | 公開設定 |
 | `YOUTUBE_CATEGORY_ID` | `25` | カテゴリ（ニュースと政治） |
-| `BACKGROUND_IMAGE` | `assets/background.png` | 背景画像。コンテナ内では `/app/assets/background.png` |
+| `BACKGROUND_IMAGE` | `assets/background.png` | 背景画像（16:9）。右上に日付を描く。コンテナ内では `/app/assets/background.png` |
 | `WORK_DIR` | `/tmp` | 作業ディレクトリ |
 | `MAX_SCRIPT_CHARS` | `14999` | この文字数を超える原稿は処理せず ERROR にする（15,000字未満まで） |
 | `MAX_UPLOADS_PER_DAY` | `5` | 1日（日本時間）あたりのアップロード上限 |

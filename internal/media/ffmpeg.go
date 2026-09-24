@@ -41,20 +41,22 @@ func ConcatAudio(ctx context.Context, inputs []string, output string) error {
 	)
 }
 
-// CreateVideo renders a 1280x720 MP4 that shows imagePath for the full length
-// of audioPath. If imagePath does not exist, a plain dark background is used.
+// CreateVideo renders a VideoWidth x VideoHeight MP4 that shows imagePath for
+// the full length of audioPath. If imagePath does not exist, a plain dark
+// background is used.
 func CreateVideo(ctx context.Context, imagePath, audioPath, output string) error {
 	var imageInput []string
 	if _, err := os.Stat(imagePath); err == nil {
 		imageInput = []string{"-loop", "1", "-framerate", "1", "-i", imagePath}
 	} else {
-		imageInput = []string{"-f", "lavfi", "-i", "color=c=0x14213d:s=1280x720:r=1"}
+		imageInput = []string{"-f", "lavfi", "-i", fmt.Sprintf("color=c=0x14213d:s=%dx%d:r=1", VideoWidth, VideoHeight)}
 	}
 
 	args := append(imageInput,
 		"-i", audioPath,
 		"-map", "0:v", "-map", "1:a",
-		"-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
+		"-vf", fmt.Sprintf("scale=%[1]d:%[2]d:force_original_aspect_ratio=decrease,pad=%[1]d:%[2]d:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
+			VideoWidth, VideoHeight),
 		"-c:v", "libx264", "-preset", "veryfast", "-tune", "stillimage", "-r", "1",
 		"-c:a", "aac", "-b:a", "128k",
 		"-shortest", "-movflags", "+faststart",

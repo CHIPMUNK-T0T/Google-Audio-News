@@ -2,6 +2,7 @@ package media
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -73,7 +74,7 @@ func TestConcatAudioAndCreateVideo(t *testing.T) {
 		if d := duration(t, video); d < 4.8 || d > 6.2 {
 			t.Errorf("%s: video duration = %.2fs, want about 5s", name, d)
 		}
-		if size := probe(t, video, "stream=width,height"); size != "1280\n720" {
+		if size := probe(t, video, "stream=width,height"); size != fmt.Sprintf("%d\n%d", VideoWidth, VideoHeight) {
 			t.Errorf("%s: video size = %q", name, size)
 		}
 	}

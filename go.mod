@@ -3,6 +3,7 @@ module github.com/chipmunk-t0t/google-audio-news
 go 1.26.0
 
 require (
+	golang.org/x/image v0.46.0
 	golang.org/x/oauth2 v0.37.0
 	google.golang.org/api v0.299.0
 )

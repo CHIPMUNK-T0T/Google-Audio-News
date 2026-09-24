@@ -17,7 +17,7 @@ Gemini Spark が毎朝作るニュース原稿（約6,000字）を音声にし�
 | 処理本体 | **Cloud Run Job を1本**（Go + ffmpeg） | ジョブの無料枠が大きい。処理を1か所にまとめられる |
 | 起動 | **Cloud Scheduler のジョブ1つ** | 無料枠が3ジョブまでで、1つで足りる |
 | TTS | **Fish Audio `s2.1-pro-free`**（既定）。予備は Cloud TTS の Chirp 3: HD | Fish は現時点で無料・高品質。無料期間の終了に備えて、`TTS_PROVIDER` だけで切り替えられるようにする |
-| 動画 | 固定の背景画像と音声を ffmpeg で MP4 にする。作業ファイルは `/tmp` に置く | Cloud Storage を使わずに済む |
+| 動画 | 背景画像の右上にニュースの日付（`created_at`）を描き、音声と合わせて ffmpeg で 854x480 の MP4 にする。作業ファイルは `/tmp` に置く | Cloud Storage を使わずに済む。静止画だけの動画なので、YouTube が自動で選ぶサムネイルもこの画像になる |
 | 配信 | YouTube Data API で private アップロード | 審査していない API プロジェクトは private しか使えないが、自分用なので問題ない |
 | 秘密情報 | Secret Manager に3つ置く（`fish-api-key`、`youtube-client-secret`、`youtube-refresh-token`） | 無料枠（6バージョン）で足りる |
 | **使わないもの** | Dify、Apps Script の `sendToDify`、Cloud Storage、DB、Pub/Sub | 役割が Cloud Run Job と重なる。Spark 案では生成した MP3 の保存先も決まっていなかった |
@@ -45,7 +45,7 @@ Cloud Run Job（asia-northeast1）
   1. READY の行を1件だけ取り、PROCESSING にする
   2. TTSProvider.Generate で原稿を /tmp/audio.mp3 にする
      （Fish は原稿全体を1リクエストで送る）
-  3. 背景画像と音声から /tmp/video.mp4 を作る
+  3. 背景画像に日付を描いて /tmp/frame.png を作り、音声と合わせて /tmp/video.mp4 を作る
   4. YouTube に private でアップロードする（説明欄に sources_json の出典を入れる）
   5. UPLOADED と video_id を書き込む（失敗したら ERROR と error）
 ```

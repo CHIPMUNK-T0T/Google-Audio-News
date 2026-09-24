@@ -81,7 +81,7 @@ func run(ctx context.Context, cfg config.Config) error {
 		}
 	}
 
-	videoID, err := process(ctx, cfg, ttsProvider, uploader, *item)
+	videoID, err := process(ctx, cfg, ttsProvider, uploader, *item, now())
 	if err != nil {
 		if !cfg.DryRun {
 			// Use a fresh context so the failure is recorded even after SIGTERM.
@@ -154,11 +154,13 @@ func pick(ctx context.Context, cfg config.Config, queue *sheets.Queue, items []s
 }
 
 // process synthesizes the audio, renders the video and uploads it.
-func process(ctx context.Context, cfg config.Config, provider tts.TTSProvider, uploader *youtube.Uploader, item sheets.Item) (string, error) {
+func process(ctx context.Context, cfg config.Config, provider tts.TTSProvider, uploader *youtube.Uploader, item sheets.Item, now time.Time) (string, error) {
 	audioPath := filepath.Join(cfg.WorkDir, "audio.mp3")
+	framePath := filepath.Join(cfg.WorkDir, "frame.png")
 	videoPath := filepath.Join(cfg.WorkDir, "video.mp4")
 	if !cfg.DryRun {
 		defer os.Remove(audioPath)
+		defer os.Remove(framePath)
 		defer os.Remove(videoPath)
 	}
 
@@ -169,13 +171,19 @@ func process(ctx context.Context, cfg config.Config, provider tts.TTSProvider, u
 	log.Printf("audio ready in %s", time.Since(start).Round(time.Second))
 
 	start = time.Now()
-	if err := media.CreateVideo(ctx, cfg.BackgroundImage, audioPath, videoPath); err != nil {
+	background := framePath
+	if err := media.RenderFrame(cfg.BackgroundImage, newsDate(item.CreatedAt, now), framePath); err != nil {
+		// The date is decoration; upload without it rather than fail.
+		log.Printf("row %d: frame: %v; using the background without the date", item.Row, err)
+		background = cfg.BackgroundImage
+	}
+	if err := media.CreateVideo(ctx, background, audioPath, videoPath); err != nil {
 		return "", fmt.Errorf("video: %w", err)
 	}
 	log.Printf("video ready in %s", time.Since(start).Round(time.Second))
 
 	if cfg.DryRun {
-		log.Printf("DRY_RUN: skipped upload; files kept at %s and %s", audioPath, videoPath)
+		log.Printf("DRY_RUN: skipped upload; files kept at %s, %s and %s", audioPath, framePath, videoPath)
 		return "", nil
 	}
 
@@ -185,6 +193,15 @@ func process(ctx context.Context, cfg config.Config, provider tts.TTSProvider, u
 	}
 	title := youtube.Title(item.Title, "ニュース "+item.ID)
 	return uploader.Upload(ctx, videoPath, title, youtube.Description(item.CreatedAt, sources))
+}
+
+// newsDate returns the date shown on the video: the day in created_at, or
+// the current day if created_at is not RFC 3339.
+func newsDate(createdAt string, now time.Time) time.Time {
+	if t, err := time.Parse(time.RFC3339, createdAt); err == nil {
+		return t.In(now.Location())
+	}
+	return now
 }
 
 func sameDay(t, now time.Time) bool {

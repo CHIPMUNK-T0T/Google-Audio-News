@@ -18,9 +18,10 @@ cmd/youtube-auth/   YouTube のリフレッシュトークンを取得する（�
 internal/config/    環境変数の読み込み
 internal/sheets/    キュー用スプレッドシートの読み書き
 internal/tts/       TTSProvider と実装（fish.go / google.go）
-internal/media/     ffmpeg（音声の結合、静止画と音声から動画を作成）
+internal/media/     背景への日付の描画、ffmpeg（音声の結合、静止画と音声から動画を作成）
+                    fonts/ は日付用のフォント（Noto Sans JP Bold のサブセット、SIL OFL 1.1）
 internal/youtube/   アップロード、タイトルと説明欄の組み立て
-assets/             背景画像（差し替えてよい。1280x720 推奨）
+assets/             背景画像（16:9。右上の黒い部分に日付を描く）
 ```
 
 ## 開発
