@@ -14,7 +14,7 @@ PowerShell で書くときの注意:
 リポジトリを取得し、以降のコマンドはすべてこのフォルダで実行する。
 
 ```powershell
-git clone -b claude/keen-hamilton-sj9gvx https://github.com/CHIPMUNK-T0T/Google-Audio-News.git
+git clone https://github.com/CHIPMUNK-T0T/Google-Audio-News.git
 cd Google-Audio-News
 ```
 
@@ -85,7 +85,7 @@ Remove-Item secret.txt
 1. Google Cloud コンソールの「Google Auth Platform」で次を設定する。
    - 対象: **外部**
    - OAuth クライアントを作成する。種類は **デスクトップ アプリ**。
-   - 本番環境にするには、ホームページとプライバシーポリシーの URL が必要。GitHub のリポジトリの Settings → Pages で、Source を「Deploy from a branch」、ブランチを `claude/keen-hamilton-sj9gvx`、フォルダを `/docs` にして保存する。`docs/index.md` と `docs/privacy.md` が公開される（`docs/_config.yml` で、ほかの文書は除外している）。
+   - 本番環境にするには、ホームページとプライバシーポリシーの URL が必要。GitHub のリポジトリの Settings → Pages で、Source を「Deploy from a branch」、ブランチを `main`、フォルダを `/docs` にして保存する。`docs/index.md` と `docs/privacy.md` が公開される（`docs/_config.yml` で、ほかの文書は除外している）。
    - 「ブランディング」で次を入力して保存する。アプリ名に Google、Gemini、YouTube などの Google の製品名は入れない。
      - アプリ名、ユーザーサポートメール、デベロッパーの連絡先メール
      - ホームページ: `https://chipmunk-t0t.github.io/Google-Audio-News/`
