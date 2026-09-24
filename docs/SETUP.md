@@ -85,7 +85,12 @@ Remove-Item secret.txt
 1. Google Cloud コンソールの「Google Auth Platform」で次を設定する。
    - 対象: **外部**
    - OAuth クライアントを作成する。種類は **デスクトップ アプリ**。
-   - 「ブランディング」でアプリ名、ユーザーサポートメール、デベロッパーの連絡先メールを入力して保存する。これが終わるまで「アプリを公開」は押せない。
+   - 本番環境にするには、ホームページとプライバシーポリシーの URL が必要。GitHub のリポジトリの Settings → Pages で、Source を「Deploy from a branch」、ブランチを `claude/keen-hamilton-sj9gvx`、フォルダを `/docs` にして保存する。`docs/index.md` と `docs/privacy.md` が公開される（`docs/_config.yml` で、ほかの文書は除外している）。
+   - 「ブランディング」で次を入力して保存する。アプリ名に Google、Gemini、YouTube などの Google の製品名は入れない。
+     - アプリ名、ユーザーサポートメール、デベロッパーの連絡先メール
+     - ホームページ: `https://chipmunk-t0t.github.io/Google-Audio-News/`
+     - プライバシーポリシー: `https://chipmunk-t0t.github.io/Google-Audio-News/privacy.html`
+     - 承認済みドメイン: `chipmunk-t0t.github.io`
    - 「対象」の「アプリを公開」で、公開ステータスを **本番環境** にする。**テスト中に取得したリフレッシュトークンは7日で失効するので、必ず公開してから次の 2. に進む。**
 2. リフレッシュトークンを取得する。表示された URL を、YouTube チャンネルを持っているアカウントでログインしたブラウザで開いて承認する。「確認されていないアプリ」の警告が出るので、「詳細」から先に進む。
 

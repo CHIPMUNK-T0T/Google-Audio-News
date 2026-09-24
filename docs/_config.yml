@@ -1,0 +1,6 @@
+title: Google-Audio-News
+description: 個人用のニュース音声アップローダー
+# GitHub Pages には OAuth 同意画面用の2ページだけを公開する
+exclude:
+  - DESIGN.md
+  - SETUP.md
