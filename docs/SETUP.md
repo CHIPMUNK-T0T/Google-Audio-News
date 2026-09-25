@@ -213,29 +213,14 @@ gcloud iam service-accounts keys list "--iam-account=$WRITER"
 gcloud iam service-accounts keys delete <KEY_ID> "--iam-account=$WRITER"
 ```
 
-Routine は毎朝5:45（日本時間）に新しいセッションで、次の指示を実行する。行が追加されると、6:00 からの Cloud Scheduler が動画にする。同じ日の行（`news_YYYYMMDD_...`）がすでにあれば、`queue-add` は追加しない。Spark の予定タスクも動かしたままだと、Spark の行も動画になる。
+Routine は毎朝7:30（日本時間）に新しいセッションで動く。指示文は聞き手の経歴や関心を含むので、このリポジトリには置かず、Routine の設定だけで管理する。指示文には次を必ず入れる。
 
-```text
-毎朝の AI ニュースの読み上げ原稿を作り、スプレッドシート daily_news_queue に1行追加する。追加した行は Cloud Run のジョブが動画にして YouTube に上げる。
+- 原稿は `/tmp` などリポジトリの外に保存し、まず `go run ./cmd/queue-add -dry-run -title ... -script ... -sources ...` で確かめてから、`SPREADSHEET_ID` を付けて本番を実行する。
+- 作業ディレクトリにリポジトリがなければ `git clone` する（Routine のセッションにはリポジトリが付いていない）。
+- `already today's` で止まったら、何もせずに終える（`-force` は使わない）。
+- リポジトリのファイルは変更せず、commit も push もしない。
 
-1. 過去24時間（日本時間）に出た世界の AI 関連ニュースを Web 検索で調べる。分野は、フロンティアモデル、ローカル LLM、AI エージェント、デバイスと半導体、日本の AI、中国の AI、欧州とカナダの AI。公式発表か信頼できる報道で事実と日付を確かめ、24時間より前のものは入れない。
-2. 読み上げ用の日本語の原稿を書く。
-   - 5,000〜6,000字。冒頭で日付（例: 9月25日金曜日）を言い、最後に短く締める。
-   - 耳で聞いてわかる、プレーンな文章だけにする。Markdown、見出し記号、箇条書き、表、URL、絵文字は入れない。
-   - 推測や誇張をしない。確かめられなかったことは書かない。
-3. タイトルを40字以内で作る。< と > は使わない。
-4. 参照した記事を JSON 配列にする。要素は {"title","source","url","published_at","category"} で、published_at は ISO 8601。
-5. 原稿を script.txt、出典を sources.json としてリポジトリの外（/tmp など）に保存する。
-6. リポジトリ Google-Audio-News（作業ディレクトリになければ git clone https://github.com/CHIPMUNK-T0T/Google-Audio-News.git）の main で、まず確認だけ実行する。
-   go run ./cmd/queue-add -dry-run -title "<タイトル>" -script /tmp/script.txt -sources /tmp/sources.json
-   エラーが出たら原稿を直して、通るまで繰り返す。
-7. 本番を実行する。
-   SPREADSHEET_ID=1HVK6VuGrOdCBqnh4L8oD16sda53OQLvTxhKICVQ7Um4 go run ./cmd/queue-add -title "<タイトル>" -script /tmp/script.txt -sources /tmp/sources.json
-   - 「already today's」で止まったら、今日の行はもうあるので何もせずに終える。-force は使わない。
-   - SHEET_WRITER_KEY がない、または書き込みに失敗したら、エラーの内容を報告して終える。
-8. リポジトリのファイルは変更しない。commit も push もしない。
-9. 最後に、追加した id、タイトル、文字数、取り上げたニュースの見出しを報告する。
-```
+行が追加されると、Cloud Scheduler の次の起動（10分ごと、8:50まで）で動画になる。同じ日の行（`news_YYYYMMDD_...`）がすでにあれば、`queue-add` は追加しない。そのため、Spark の予定タスクが先に行を書いた日は、Routine の行は追加されない。
 
 ## TTS を Google に切り替える
 
