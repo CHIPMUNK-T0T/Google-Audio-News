@@ -66,7 +66,7 @@ type TTSProvider interface {
 
 ## 4. Gemini Spark との約束（出力仕様）
 
-Claude の Routine も、`cmd/queue-add` で同じ形式の行を書く（手順は SETUP.md の9章）。
+Claude の Routine も、`cmd/queue-add` で同じ形式の行を書く。id だけは `econ_YYYYMMDD_HHMMSS`（朝の経済）や `ai_YYYYMMDD_HHMMSS`（夜の AI）のように種類ごとに変える（手順は SETUP.md の9章）。
 
 Spark が出力するのは **スプレッドシートの1行だけ**。Drive フォルダはスプレッドシートの置き場所で、Spark に別のファイルを作らせる必要はない。
 

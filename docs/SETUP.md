@@ -213,14 +213,27 @@ gcloud iam service-accounts keys list "--iam-account=$WRITER"
 gcloud iam service-accounts keys delete <KEY_ID> "--iam-account=$WRITER"
 ```
 
-Routine は毎朝7:30（日本時間）に新しいセッションで動く。指示文は聞き手の経歴や関心を含むので、このリポジトリには置かず、Routine の設定だけで管理する。指示文には次を必ず入れる。
+Routine は2つあり、どちらも新しいセッションで動く。
 
-- 原稿は `/tmp` などリポジトリの外に保存し、まず `go run ./cmd/queue-add -dry-run -title ... -script ... -sources ...` で確かめてから、`SPREADSHEET_ID` を付けて本番を実行する。
+| Routine | 時刻（日本時間） | 内容 | `-kind` |
+| --- | --- | --- | --- |
+| 朝 | 7:30 | 経済ニュース（4,000〜6,000字） | `econ` |
+| 夜 | 23:00 | AI ニュース（4,000〜6,000字） | `ai` |
+
+指示文は聞き手の経歴や関心を含むので、このリポジトリには置かず、Routine の設定だけで管理する。指示文には次を必ず入れる。
+
+- 原稿は `/tmp` などリポジトリの外に保存し、まず `go run ./cmd/queue-add -dry-run -kind ... -title ... -script ... -sources ...` で確かめてから、`SPREADSHEET_ID` を付けて本番を実行する。
 - 作業ディレクトリにリポジトリがなければ `git clone` する（Routine のセッションにはリポジトリが付いていない）。
 - `already today's` で止まったら、何もせずに終える（`-force` は使わない）。
 - リポジトリのファイルは変更せず、commit も push もしない。
 
-行が追加されると、Cloud Scheduler の次の起動（10分ごと、8:50まで）で動画になる。同じ日の行（`news_YYYYMMDD_...`）がすでにあれば、`queue-add` は追加しない。そのため、Spark の予定タスクが先に行を書いた日は、Routine の行は追加されない。
+行の id は `<kind>_YYYYMMDD_HHMMSS` になり、同じ日に同じ `-kind` の行がすでにあれば、`queue-add` は追加しない。種類が違えば、同じ日に何行でも追加できる。
+
+夜の行をその夜のうちに動画にするには、Cloud Scheduler を夜も動かす（23:00〜0:50 と 6:00〜8:50）。
+
+```powershell
+gcloud scheduler jobs update http "${JOB}-trigger" "--location=$REGION" "--schedule=*/10 0,6-8,23 * * *"
+```
 
 ## TTS を Google に切り替える
 
