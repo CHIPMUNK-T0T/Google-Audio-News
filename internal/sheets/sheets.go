@@ -66,7 +66,19 @@ type Queue struct {
 // New connects to the spreadsheet using Application Default Credentials.
 // The credentials' account must have edit access to the spreadsheet.
 func New(ctx context.Context, spreadsheetID, sheetName string) (*Queue, error) {
-	service, err := gsheets.NewService(ctx, option.WithScopes(gsheets.SpreadsheetsScope))
+	return newQueue(ctx, spreadsheetID, sheetName)
+}
+
+// NewWithServiceAccountKey connects to the spreadsheet as the service account
+// in key, a JSON key file's contents. The service account must have edit
+// access to the spreadsheet.
+func NewWithServiceAccountKey(ctx context.Context, spreadsheetID, sheetName string, key []byte) (*Queue, error) {
+	return newQueue(ctx, spreadsheetID, sheetName, option.WithAuthCredentialsJSON(option.ServiceAccount, key))
+}
+
+func newQueue(ctx context.Context, spreadsheetID, sheetName string, opts ...option.ClientOption) (*Queue, error) {
+	opts = append(opts, option.WithScopes(gsheets.SpreadsheetsScope))
+	service, err := gsheets.NewService(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("create sheets client: %w", err)
 	}
@@ -139,6 +151,49 @@ func (q *Queue) addMissingHeaders(ctx context.Context, width int) error {
 		width++
 	}
 	return q.write(ctx, data)
+}
+
+// Append adds item as a new row after the last row. Only the columns that the
+// writer of a row fills in (id to status) are written. Call Items first so
+// the columns are known.
+func (q *Queue) Append(ctx context.Context, item Item) error {
+	if q.columns == nil {
+		return fmt.Errorf("read sheet %q before appending", q.sheetName)
+	}
+	_, err := q.service.Spreadsheets.Values.Append(q.spreadsheetID, quoteSheet(q.sheetName)+"!A1",
+		&gsheets.ValueRange{Values: [][]any{q.rowValues(item)}}).
+		ValueInputOption("RAW").InsertDataOption("INSERT_ROWS").Context(ctx).Do()
+	if err != nil {
+		return fmt.Errorf("append to sheet %q: %w", q.sheetName, err)
+	}
+	return nil
+}
+
+func (q *Queue) rowValues(item Item) []any {
+	values := map[string]string{
+		colID:          item.ID,
+		colCreatedAt:   item.CreatedAt,
+		colTitle:       item.Title,
+		colScript:      item.Script,
+		colSourcesJSON: item.SourcesJSON,
+		colStatus:      item.Status,
+	}
+	width := 0
+	for col := range values {
+		if idx, ok := q.columns[col]; ok && idx >= width {
+			width = idx + 1
+		}
+	}
+	row := make([]any, width)
+	for i := range row {
+		row[i] = ""
+	}
+	for col, v := range values {
+		if idx, ok := q.columns[col]; ok {
+			row[idx] = v
+		}
+	}
+	return row
 }
 
 // MarkProcessing claims the item so later runs skip it.

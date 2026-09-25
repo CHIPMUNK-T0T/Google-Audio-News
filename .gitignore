@@ -3,3 +3,5 @@
 *.mp3
 *.mp4
 .env
+/queue-add
+sheet-writer-key.json

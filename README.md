@@ -1,9 +1,9 @@
 # Google Audio News
 
-Gemini Spark が Google スプレッドシートに書いたニュース原稿を、音声付きの動画にして YouTube に非公開でアップロードする、自分専用のツールです。GCP の Cloud Run Job で動きます。
+Gemini Spark または Claude の Routine が Google スプレッドシートに書いたニュース原稿を、音声付きの動画にして YouTube に非公開でアップロードする、自分専用のツールです。GCP の Cloud Run Job で動きます。
 
 ```text
-Gemini Spark → Google Sheets (READY) → Cloud Scheduler → Cloud Run Job (Go)
+Gemini Spark / Claude Routine → Google Sheets (READY) → Cloud Scheduler → Cloud Run Job (Go)
   → TTS（Fish Audio / Cloud TTS）→ ffmpeg で MP4 → YouTube（private）→ Sheets (UPLOADED)
 ```
 
@@ -15,6 +15,7 @@ Gemini Spark → Google Sheets (READY) → Cloud Scheduler → Cloud Run Job (Go
 ```text
 cmd/uploader/       Cloud Run Job 本体（1回の実行で READY の行を1件処理する）
 cmd/youtube-auth/   YouTube のリフレッシュトークンを取得する（ローカルで1回だけ使う）
+cmd/queue-add/      シートに READY の行を1行追加する（Claude の Routine が使う）
 internal/config/    環境変数の読み込み
 internal/sheets/    キュー用スプレッドシートの読み書き
 internal/tts/       TTSProvider と実装（fish.go / google.go）
